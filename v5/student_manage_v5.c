@@ -11,7 +11,7 @@ typedef struct StudentNode {
     int age;
     float score;
     char gender;
-    struct studentNode *next;
+    struct StudentNode *next;
 } StudentNode;
 
 void showMenu();
@@ -45,11 +45,11 @@ int main() {
                 showAllStudents(head);
                 break;
             case 3:
-                updateStudents(head);
+                updateStudent(head);
                 saveToFile(head);
                 break;
             case 4:
-                deleteStudents(&head);
+                deleteStudent(&head);
                 saveToFile(head);
                 break;
             case 5:
@@ -173,46 +173,45 @@ void deleteStudent(StudentNode **head) {
     printf("学生删除成功! \n");
 }
 
-void updateStudents(Student students[], int count) {
-    int id, index;
+void updateStudent(StudentNode *head) {
+    int id;
     printf("请输入要修改的学生学号:");
     scanf("%d", &id);
 
-    index = findStudentById(students, count, id);
-    if (index == -1) {
+    StudentNode *student = findStudentById(head, id);
+    if (student == NULL) {
         printf("未找到该学生！\n");
         return;
     }
 
-    Student *s = &students[index];
     printf("\n当前学生信息:\n");
-    printf("学号：%d\n", s->id);
-    printf("姓名：%s\n", s->name);
-    printf("年龄：%d\n", s->age);
-    printf("成绩：%.2f\n", s->score);
-    printf("性别：%c\n", s->gender);
+    printf("学号：%d\n", student->id);
+    printf("姓名：%s\n", student->name);
+    printf("年龄：%d\n", student->age);
+    printf("成绩：%.2f\n", student->score);
+    printf("性别：%c\n", student->gender);
 
     printf("\n请输入新的姓名（直接回车保持不变）：");
     char newName[50];
     getchar(); // 吸收换行符
     fgets(newName, sizeof(newName), stdin);
-    if (newName[0] != '\n') {
+    if (newName[0] != '\n' && newName[0] != '\0') {
         newName[strcspn(newName, "\n")] = '\0'; // 去掉换行符
-        strcpy(s->name, newName);
+        strcpy(student->name, newName);
     }
 
     printf("请输入新的年龄（0保持不变）:");
     int newAge;
     scanf("%d", &newAge);
     if (newAge != 0) {
-        s->age = newAge;
+        student->age = newAge;
     }
 
     printf("请输入新的成绩（-1保持不变）:");
-    int newScore;
+    float newScore;
     scanf("%f", &newScore);
     if (newScore != -1) {
-        s->score = newScore;
+        student->score = newScore;
     }
 
     printf("学生信息修改成功!\n");
@@ -238,9 +237,11 @@ void showAllStudents(StudentNode *head) {
 
 void calculateAverageScore(StudentNode *head) {
     if (head == NULL) {
+        printf("暂无学生数据\n");
         return;
     }
-    int count,sum;
+    int count = 0;
+    float sum = 0.0;
     StudentNode *current = head;
     while (current != NULL ) {
         count++;
@@ -250,16 +251,30 @@ void calculateAverageScore(StudentNode *head) {
     printf("班级平均成绩: %.2f \n", sum / count);
 }
 
-void saveToFile(Student students[], int count) {
+void saveToFile(StudentNode *head) {
     FILE *fp = fopen(FILENAME, "wb");
     if (fp == NULL) {
         printf("无法打开文件保存数据！\n");
         return;
     }
+    
+    // 先计算学生数量
+    int count = 0;
+    StudentNode *current = head;
+    while (current != NULL) {
+        count++;
+        current = current->next;
+    }
+    
     // 先写入学生数量
     fwrite(&count, sizeof(int), 1, fp);
+    
     // 再写入所有学生数据
-    fwrite(students, sizeof(Student), count, fp);
+    current = head;
+    while (current != NULL) {
+        fwrite(current, sizeof(StudentNode) - sizeof(StudentNode*), 1, fp);
+        current = current->next;
+    }
 
     fclose(fp);
     printf("数据已保存到文件\n");
@@ -274,19 +289,27 @@ void loadFromFile(StudentNode **head) {
     }
 
     int count;
-    fread(&count, sizeof(int), 1, fp);
+    if (fread(&count, sizeof(int), 1, fp) != 1) {
+        printf("文件读取失败\n");
+        fclose(fp);
+        *head = NULL;
+        return;
+    }
 
     *head = NULL;
     StudentNode **current = head;
     for (int i = 0; i < count; i++) {
         StudentNode *newNode = (StudentNode *) malloc(sizeof(StudentNode));
-        fread(newNode, sizeof(StudentNode) - sizeof(StudentNode *), 1, fp);
+        if (fread(newNode, sizeof(StudentNode) - sizeof(StudentNode*), 1, fp) != 1) {
+            free(newNode);
+            break;
+        }
         newNode->next = NULL;
         *current = newNode;
         current = &newNode->next;
     }
     fclose(fp);
-    printf("以从文件加载%d名学生信息\n", count);
+    printf("已从文件加载%d名学生信息\n", count);
 }
 
 void freeAllStudents(StudentNode **head) {
