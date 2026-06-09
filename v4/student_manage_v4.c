@@ -2,6 +2,7 @@
 #include <string.h>
 
 #define MAX_STUDENTS 50
+#define FILENAME "students.dat"
 
 typedef struct {
     int id;
@@ -26,10 +27,17 @@ void deleteStudents(Student students[], int *count);
 
 void calculateAverageScore(Student students[], int count);
 
+void saveToFile(Student students[], int count);
+
+void loadFromFile(Student students[], int *count);
+
 int main() {
     Student students[MAX_STUDENTS];
     int studentCount = 0;
     int choice;
+
+    loadFromFile(students, &studentCount);
+    printf("已从文件加载%d名学生信息\n", studentCount);
 
     while (1) {
         showMenu();
@@ -38,15 +46,18 @@ int main() {
         switch (choice) {
             case 1:
                 addStudent(students, &studentCount);
+                saveToFile(students, studentCount);
                 break;
             case 2:
                 showAllStudents(students, studentCount);
                 break;
             case 3:
                 updateStudents(students, studentCount);
+                saveToFile(students, studentCount);
                 break;
             case 4:
                 deleteStudents(students, &studentCount);
+                saveToFile(students, studentCount);
                 break;
             case 5:
                 calculateAverageScore(students, studentCount);
@@ -204,4 +215,34 @@ void calculateAverageScore(Student students[], int count) {
     printf("学生总数: %d\n", count);
     printf("总分: %d\n", totalScore);
     printf("平均成绩: %.2f\n", average);
+}
+
+void saveToFile(Student students[], int count) {
+    FILE *fp = fopen(FILENAME, "wb");
+    if (fp == NULL) {
+        printf("无法打开文件保存数据！\n");
+        return;
+    }
+    // 先写入学生数量
+    fwrite(&count, sizeof(int), 1, fp);
+    // 再写入所有学生数据
+    fwrite(students, sizeof(Student), count, fp);
+
+    fclose(fp);
+    printf("数据已保存到文件\n");
+}
+
+void loadFromFile(Student students[], int *count) {
+    FILE *fp = fopen(FILENAME, "rb");
+    if (fp == NULL) {
+        printf("数据文件不存在，将创建新文件\n");
+        *count = 0;
+        return;
+    }
+
+    // 先读取学生数量
+    fread(count, sizeof(int), 1, fp);
+    // 再读取所有学生数据
+    fread(students, sizeof(students), *count, fp);
+    fclose(fp);
 }
